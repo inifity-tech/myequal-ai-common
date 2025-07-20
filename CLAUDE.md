@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+**IMPORTANT**: Always use `uv` commands for Python package management, never use `pip` directly.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Repository Overview
