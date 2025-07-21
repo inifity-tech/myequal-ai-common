@@ -2,8 +2,9 @@
 
 import functools
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar
 
 from datadog import DogStatsd
 
@@ -19,7 +20,7 @@ _metrics_client: Optional["DatabaseMetrics"] = None
 class DatabaseMetrics:
     """Database-specific metrics collection with Datadog."""
 
-    def __init__(self, statsd_client: Optional[DogStatsd] = None):
+    def __init__(self, statsd_client: DogStatsd | None = None):
         """Initialize database metrics."""
         self.config = get_database_config()
         self.statsd = statsd_client or DogStatsd(
@@ -38,14 +39,14 @@ class DatabaseMetrics:
 
     def _get_tags(
         self,
-        table: Optional[str] = None,
-        operation: Optional[str] = None,
-        status: Optional[str] = None,
-        additional_tags: Optional[List[str]] = None,
-    ) -> List[str]:
+        table: str | None = None,
+        operation: str | None = None,
+        status: str | None = None,
+        additional_tags: list[str] | None = None,
+    ) -> list[str]:
         """Build tags for metrics."""
         tags = self._base_tags.copy()
-        
+
         if table:
             tags.append(f"table:{table}")
         if operation:
@@ -54,7 +55,7 @@ class DatabaseMetrics:
             tags.append(f"status:{status}")
         if additional_tags:
             tags.extend(additional_tags)
-            
+
         return tags
 
     @contextmanager
@@ -62,12 +63,12 @@ class DatabaseMetrics:
         self,
         table: str,
         operation: str,
-        additional_tags: Optional[List[str]] = None,
+        additional_tags: list[str] | None = None,
     ):
         """Context manager to record query metrics."""
         start_time = time.time()
         status = "success"
-        
+
         try:
             yield
         except Exception as e:
@@ -75,7 +76,7 @@ class DatabaseMetrics:
             error_type = type(e).__name__
             tags = self._get_tags(table, operation, status, additional_tags)
             tags.append(f"error_type:{error_type}")
-            
+
             # Record error
             self.statsd.increment("db.query.error", tags=tags)
             raise
@@ -83,21 +84,21 @@ class DatabaseMetrics:
             # Record duration
             duration = (time.time() - start_time) * 1000  # Convert to ms
             tags = self._get_tags(table, operation, status, additional_tags)
-            
+
             self.statsd.histogram("db.query.duration", duration, tags=tags)
             self.statsd.increment("db.query.count", tags=tags)
 
     @contextmanager
     def record_transaction(
         self,
-        tables: Optional[List[str]] = None,
-        additional_tags: Optional[List[str]] = None,
+        tables: list[str] | None = None,
+        additional_tags: list[str] | None = None,
     ):
         """Context manager to record transaction metrics."""
         start_time = time.time()
         status = "success"
         rollback = False
-        
+
         try:
             yield
         except Exception as e:
@@ -111,7 +112,7 @@ class DatabaseMetrics:
                 additional_tags=additional_tags,
             )
             tags.append(f"error_type:{error_type}")
-            
+
             # Record error
             self.statsd.increment("db.transaction.error", tags=tags)
             raise
@@ -124,10 +125,10 @@ class DatabaseMetrics:
                 status=status,
                 additional_tags=additional_tags,
             )
-            
+
             self.statsd.histogram("db.transaction.duration", duration, tags=tags)
             self.statsd.increment("db.transaction.count", tags=tags)
-            
+
             if rollback:
                 self.statsd.increment("db.transaction.rollback", tags=tags)
 
@@ -141,7 +142,7 @@ class DatabaseMetrics:
     ):
         """Record connection pool statistics."""
         tags = self._base_tags
-        
+
         self.statsd.gauge("db.pool.size", pool_size, tags=tags)
         self.statsd.gauge("db.pool.connections.checked_in", checked_in, tags=tags)
         self.statsd.gauge("db.pool.connections.checked_out", checked_out, tags=tags)
@@ -151,18 +152,18 @@ class DatabaseMetrics:
     def record_health_check(
         self,
         healthy: bool,
-        response_time: Optional[float] = None,
-        error: Optional[str] = None,
+        response_time: float | None = None,
+        error: str | None = None,
     ):
         """Record database health check result."""
         tags = self._base_tags.copy()
         tags.append(f"healthy:{str(healthy).lower()}")
-        
+
         if error:
             tags.append(f"error_type:{error}")
-        
+
         self.statsd.gauge("db.health.status", 1 if healthy else 0, tags=tags)
-        
+
         if response_time is not None:
             self.statsd.histogram("db.health.response_time", response_time, tags=tags)
 
@@ -170,30 +171,36 @@ class DatabaseMetrics:
         self,
         table: str,
         operation: str,
-        additional_tags: Optional[List[str]] = None,
+        additional_tags: list[str] | None = None,
     ):
         """Decorator to time database queries."""
+
         def decorator(func: F) -> F:
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 with self.record_query(table, operation, additional_tags):
                     return func(*args, **kwargs)
+
             return wrapper
+
         return decorator
 
     def async_query_timer(
         self,
         table: str,
         operation: str,
-        additional_tags: Optional[List[str]] = None,
+        additional_tags: list[str] | None = None,
     ):
         """Decorator to time async database queries."""
+
         def decorator(func: F) -> F:
             @functools.wraps(func)
             async def wrapper(*args, **kwargs):
                 with self.record_query(table, operation, additional_tags):
                     return await func(*args, **kwargs)
+
             return wrapper
+
         return decorator
 
 

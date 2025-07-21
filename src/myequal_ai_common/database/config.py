@@ -1,7 +1,5 @@
 """Database configuration for MyEqual AI services."""
 
-from typing import Optional
-
 from pydantic import Field, PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -50,7 +48,7 @@ class DatabaseConfig(BaseSettings):
     )
 
     # Query settings
-    query_timeout: Optional[int] = Field(
+    query_timeout: int | None = Field(
         default=30,
         description="Default query timeout in seconds",
     )
@@ -60,7 +58,7 @@ class DatabaseConfig(BaseSettings):
     )
 
     # SSL settings
-    ssl_mode: Optional[str] = Field(
+    ssl_mode: str | None = Field(
         default=None,
         description="SSL mode (disable, allow, prefer, require, verify-ca, verify-full)",
     )
@@ -117,10 +115,12 @@ class DatabaseConfig(BaseSettings):
 
         # Add pool configuration for production
         if self.is_production:
-            kwargs.update({
-                "pool_size": self.pool_size,
-                "max_overflow": self.max_overflow,
-            })
+            kwargs.update(
+                {
+                    "pool_size": self.pool_size,
+                    "max_overflow": self.max_overflow,
+                }
+            )
             if not is_async:
                 kwargs["pool_timeout"] = self.pool_timeout
         else:
@@ -138,7 +138,7 @@ class DatabaseConfig(BaseSettings):
 
 
 # Global instance
-_database_config: Optional[DatabaseConfig] = None
+_database_config: DatabaseConfig | None = None
 
 
 def get_database_config() -> DatabaseConfig:
