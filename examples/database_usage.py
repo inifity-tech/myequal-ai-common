@@ -1,8 +1,18 @@
-"""Example usage of the database module."""
+"""Example usage of the database module.
+
+This example demonstrates:
+- Basic CRUD operations with BaseDBManager
+- Custom query methods using execute_query()
+- Raw SQL execution with execute_raw_sql()
+- Bulk operations (create/update)
+- Transaction management
+- Both synchronous and asynchronous patterns
+"""
 
 import asyncio
 import os
 
+from sqlalchemy import select
 from sqlmodel import Field, SQLModel
 
 from myequal_ai_common.database import (
@@ -44,6 +54,39 @@ class TaskManager(BaseDBManager[Task]):
         """Mark a task as completed."""
         return self.update(task_id, completed=True)
 
+    def get_tasks_by_priority_range(self, min_priority: int, max_priority: int) -> list[Task]:
+        """Get tasks within a priority range using custom query."""
+        query = select(Task).where(
+            Task.priority >= min_priority,
+            Task.priority <= max_priority
+        ).order_by(Task.priority.desc())
+        result = self.execute_query(query, operation="get_by_priority_range")
+        return list(result.scalars().all())
+
+    def bulk_create_tasks(self, tasks_data: list[dict]) -> list[Task]:
+        """Create multiple tasks at once."""
+        tasks = [Task(**data) for data in tasks_data]
+        return self.bulk_create(tasks)
+
+    def get_task_stats(self) -> dict:
+        """Get task statistics using raw SQL."""
+        sql = """
+            SELECT
+                COUNT(*) as total_tasks,
+                COUNT(*) FILTER (WHERE completed = true) as completed_tasks,
+                AVG(priority) as avg_priority,
+                MAX(priority) as max_priority
+            FROM tasks
+        """
+        result = self.execute_raw_sql(sql, operation="task_stats")
+        row = result.fetchone()
+        return {
+            "total_tasks": row[0] or 0,
+            "completed_tasks": row[1] or 0,
+            "avg_priority": float(row[2] or 0),
+            "max_priority": row[3] or 0
+        }
+
 
 # Async manager
 class AsyncTaskManager(AsyncBaseDBManager[Task]):
@@ -54,9 +97,43 @@ class AsyncTaskManager(AsyncBaseDBManager[Task]):
         return Task
 
     async def get_high_priority_tasks(self, min_priority: int = 5):
-        """Get high priority tasks."""
-        tasks = await self.list(order_by="-priority")
-        return [t for t in tasks if t.priority >= min_priority]
+        """Get high priority tasks using custom query."""
+        query = select(Task).where(Task.priority >= min_priority).order_by(Task.priority.desc())
+        result = await self.execute_query(query, operation="get_high_priority")
+        return list(result.scalars().all())
+
+    async def bulk_update_completion(self, task_ids: list[int], completed: bool) -> int:
+        """Bulk update task completion status using raw SQL."""
+        sql = """
+            UPDATE tasks
+            SET completed = :completed
+            WHERE id = ANY(:task_ids)
+        """
+        result = await self.execute_raw_sql(
+            sql,
+            {"completed": completed, "task_ids": task_ids},
+            operation="bulk_update_completion"
+        )
+        return result.rowcount
+
+    async def get_task_stats(self) -> dict:
+        """Get task statistics using raw SQL."""
+        sql = """
+            SELECT
+                COUNT(*) as total_tasks,
+                COUNT(*) FILTER (WHERE completed = true) as completed_tasks,
+                AVG(priority) as avg_priority,
+                MAX(priority) as max_priority
+            FROM tasks
+        """
+        result = await self.execute_raw_sql(sql, operation="task_stats")
+        row = result.fetchone()
+        return {
+            "total_tasks": row[0] or 0,
+            "completed_tasks": row[1] or 0,
+            "avg_priority": float(row[2] or 0),
+            "max_priority": row[3] or 0
+        }
 
 
 def sync_example():
@@ -110,6 +187,28 @@ def sync_example():
         completed_count = manager.count(filters={"completed": True})
         print(f"\nTotal tasks: {total}, Completed: {completed_count}")
 
+        # Custom query example - get tasks by priority range
+        mid_priority_tasks = manager.get_tasks_by_priority_range(5, 8)
+        print(f"\nTasks with priority 5-8: {len(mid_priority_tasks)}")
+        for task in mid_priority_tasks:
+            print(f"  - {task.title} (priority: {task.priority})")
+
+        # Bulk create example
+        bulk_tasks_data = [
+            {"title": f"Bulk task {i}", "priority": i * 2}
+            for i in range(1, 4)
+        ]
+        bulk_tasks = manager.bulk_create_tasks(bulk_tasks_data)
+        print(f"\nCreated {len(bulk_tasks)} tasks in bulk")
+
+        # Get statistics using raw SQL
+        stats = manager.get_task_stats()
+        print("\nTask Statistics:")
+        print(f"  Total: {stats['total_tasks']}")
+        print(f"  Completed: {stats['completed_tasks']}")
+        print(f"  Average Priority: {stats['avg_priority']:.2f}")
+        print(f"  Max Priority: {stats['max_priority']}")
+
 
 async def async_example():
     """Example of asynchronous database usage."""
@@ -154,6 +253,19 @@ async def async_example():
                 )
                 tasks.append(task)
             print(f"\nCreated {len(tasks)} tasks in bulk")
+
+        # Bulk update example
+        task_ids = [t.id for t in tasks[:3]]
+        updated_count = await manager.bulk_update_completion(task_ids, completed=True)
+        print(f"\nBulk updated {updated_count} tasks to completed")
+
+        # Get statistics using raw SQL
+        stats = await manager.get_task_stats()
+        print("\nAsync Task Statistics:")
+        print(f"  Total: {stats['total_tasks']}")
+        print(f"  Completed: {stats['completed_tasks']}")
+        print(f"  Average Priority: {stats['avg_priority']:.2f}")
+        print(f"  Max Priority: {stats['max_priority']}")
 
 
 def main():
