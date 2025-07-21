@@ -6,10 +6,16 @@ on:
   pull_request:
     branches: [ "*" ]
 
+# Skip CI for automated version bump commits
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality-checks:
     name: Quality Checks
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     strategy:
       matrix:
         python-version: ["3.12"]
