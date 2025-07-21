@@ -6,7 +6,23 @@ This example demonstrates:
 - Raw SQL execution with execute_raw_sql()
 - Bulk operations (create/update)
 - Transaction management
+- Exception handling
+- Database-session-manager-transaction flow
 - Both synchronous and asynchronous patterns
+
+Architecture Flow:
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Your Service  │    │  Database       │    │  Session        │
+│                 │───▶│  Manager        │───▶│  (get_sync_db)  │
+│  (FastAPI/etc)  │    │  (TaskManager)  │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │                        │
+                              ▼                        ▼
+                       ┌─────────────────┐    ┌─────────────────┐
+                       │  Transaction    │    │  SQLAlchemy     │
+                       │  Context Mgr    │    │  Engine/Pool    │
+                       │  (auto commit)  │    │                 │
+                       └─────────────────┘    └─────────────────┘
 """
 
 import asyncio
@@ -137,77 +153,99 @@ class AsyncTaskManager(AsyncBaseDBManager[Task]):
 
 
 def sync_example():
-    """Example of synchronous database usage."""
+    """Example of synchronous database usage with exception handling."""
     print("\n=== Synchronous Example ===")
 
     # Check database health
-    health = check_database_health()
-    print(f"Database health: {health}")
+    try:
+        health = check_database_health()
+        print(f"Database health: {health}")
+    except Exception as e:
+        print(f"Database health check failed: {e}")
+        return
 
-    # Use the database
-    with get_sync_db() as db:
-        manager = TaskManager(db)
+    # Use the database with exception handling
+    try:
+        with get_sync_db() as db:
+            manager = TaskManager(db)
 
-        # Create tasks
-        task1 = manager.create(
-            title="Write documentation",
-            description="Create comprehensive docs",
-            priority=8,
-        )
-        print(f"Created task: {task1.title} (ID: {task1.id})")
+            # Create tasks
+            task1 = manager.create(
+                title="Write documentation",
+                description="Create comprehensive docs",
+                priority=8,
+            )
+            print(f"Created task: {task1.title} (ID: {task1.id})")
 
-        task2 = manager.create(
-            title="Add tests",
-            description="Write unit tests",
-            priority=9,
-        )
-        print(f"Created task: {task2.title} (ID: {task2.id})")
+            task2 = manager.create(
+                title="Add tests",
+                description="Write unit tests",
+                priority=9,
+            )
+            print(f"Created task: {task2.title} (ID: {task2.id})")
 
-        # List tasks
-        all_tasks = manager.list()
-        print(f"\nTotal tasks: {len(all_tasks)}")
+            # List tasks
+            all_tasks = manager.list()
+            print(f"\nTotal tasks: {len(all_tasks)}")
 
-        # Get incomplete tasks
-        incomplete = manager.get_incomplete_tasks()
-        print(f"Incomplete tasks: {len(incomplete)}")
+            # Get incomplete tasks
+            incomplete = manager.get_incomplete_tasks()
+            print(f"Incomplete tasks: {len(incomplete)}")
 
-        # Complete a task
-        if incomplete:
-            completed = manager.complete_task(incomplete[0].id)
-            print(f"\nCompleted task: {completed.title}")
+            # Complete a task
+            if incomplete:
+                completed = manager.complete_task(incomplete[0].id)
+                print(f"\nCompleted task: {completed.title}")
 
-        # Transaction example
-        with manager.transaction():
-            manager.create(title="Task in transaction", priority=10)
-            manager.create(title="Another transaction task", priority=7)
-            print("\nCreated 2 tasks in transaction")
+            # Transaction example - demonstrates automatic rollback on error
+            try:
+                with manager.transaction():
+                    manager.create(title="Task in transaction", priority=10)
+                    manager.create(title="Another transaction task", priority=7)
+                    print("\nCreated 2 tasks in transaction")
+                    # If an error occurred here, both creates would be rolled back
+            except Exception as e:
+                print(f"Transaction failed and was rolled back: {e}")
 
-        # Count tasks
-        total = manager.count()
-        completed_count = manager.count(filters={"completed": True})
-        print(f"\nTotal tasks: {total}, Completed: {completed_count}")
+            # Count tasks
+            total = manager.count()
+            completed_count = manager.count(filters={"completed": True})
+            print(f"\nTotal tasks: {total}, Completed: {completed_count}")
 
-        # Custom query example - get tasks by priority range
-        mid_priority_tasks = manager.get_tasks_by_priority_range(5, 8)
-        print(f"\nTasks with priority 5-8: {len(mid_priority_tasks)}")
-        for task in mid_priority_tasks:
-            print(f"  - {task.title} (priority: {task.priority})")
+            # Custom query example - get tasks by priority range
+            try:
+                mid_priority_tasks = manager.get_tasks_by_priority_range(5, 8)
+                print(f"\nTasks with priority 5-8: {len(mid_priority_tasks)}")
+                for task in mid_priority_tasks:
+                    print(f"  - {task.title} (priority: {task.priority})")
+            except Exception as e:
+                print(f"Custom query failed: {e}")
 
-        # Bulk create example
-        bulk_tasks_data = [
-            {"title": f"Bulk task {i}", "priority": i * 2}
-            for i in range(1, 4)
-        ]
-        bulk_tasks = manager.bulk_create_tasks(bulk_tasks_data)
-        print(f"\nCreated {len(bulk_tasks)} tasks in bulk")
+            # Bulk create example with error handling
+            try:
+                bulk_tasks_data = [
+                    {"title": f"Bulk task {i}", "priority": i * 2}
+                    for i in range(1, 4)
+                ]
+                bulk_tasks = manager.bulk_create_tasks(bulk_tasks_data)
+                print(f"\nCreated {len(bulk_tasks)} tasks in bulk")
+            except Exception as e:
+                print(f"Bulk create failed: {e}")
 
-        # Get statistics using raw SQL
-        stats = manager.get_task_stats()
-        print("\nTask Statistics:")
-        print(f"  Total: {stats['total_tasks']}")
-        print(f"  Completed: {stats['completed_tasks']}")
-        print(f"  Average Priority: {stats['avg_priority']:.2f}")
-        print(f"  Max Priority: {stats['max_priority']}")
+            # Get statistics using raw SQL with error handling
+            try:
+                stats = manager.get_task_stats()
+                print("\nTask Statistics:")
+                print(f"  Total: {stats['total_tasks']}")
+                print(f"  Completed: {stats['completed_tasks']}")
+                print(f"  Average Priority: {stats['avg_priority']:.2f}")
+                print(f"  Max Priority: {stats['max_priority']}")
+            except Exception as e:
+                print(f"Statistics query failed: {e}")
+
+    except Exception as e:
+        print(f"Database operation failed: {e}")
+        print("This could be due to connection issues, query errors, or constraint violations")
 
 
 async def async_example():
@@ -294,6 +332,13 @@ def main():
         print(f"\nError: {e}")
         print("\nMake sure PostgreSQL is running and the database exists.")
         print("You may need to create the tables first using Alembic migrations.")
+    print("\nCommon database exception types:")
+    print("- DatabaseError: Base database exception")
+    print("- ConnectionError: Database connection issues") 
+    print("- RecordNotFoundError: Entity not found")
+    print("- DuplicateRecordError: Unique constraint violations")
+    print("- TransactionError: Transaction management issues")
+    print("- ValidationError: Data validation failures")
 
 
 if __name__ == "__main__":

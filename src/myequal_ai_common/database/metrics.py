@@ -23,15 +23,21 @@ class DatabaseMetrics:
     def __init__(self, statsd_client: DogStatsd | None = None):
         """Initialize database metrics."""
         self.config = get_database_config()
-        self.statsd = statsd_client or DogStatsd(
-            host="localhost",
-            port=8125,
-            namespace="myequal",
-            constant_tags=[
-                f"service:{self.config.service_name}",
-                f"environment:{self.config.environment}",
-            ],
-        )
+        
+        # Use provided client or create default one
+        if statsd_client:
+            self.statsd = statsd_client
+        else:
+            # Default configuration - services should provide their own client
+            self.statsd = DogStatsd(
+                host=self.config.metrics_host or "localhost",
+                port=self.config.metrics_port or 8125,
+                namespace="myequal.db",
+                constant_tags=[
+                    f"service:{self.config.service_name}",
+                    f"environment:{self.config.environment}",
+                ],
+            )
         self._base_tags = [
             f"service:{self.config.service_name}",
             f"environment:{self.config.environment}",
