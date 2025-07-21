@@ -1,10 +1,12 @@
 """Base database manager classes with built-in metrics."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlmodel import SQLModel
@@ -15,7 +17,7 @@ from .metrics import get_db_metrics
 ModelType = TypeVar("ModelType", bound=SQLModel)
 
 
-class BaseDBManager(ABC, Generic[ModelType]):
+class BaseDBManager[ModelType: SQLModel](ABC):
     """Base class for sync database managers with metrics."""
 
     def __init__(self, db_session: Session):
@@ -174,8 +176,55 @@ class BaseDBManager(ABC, Generic[ModelType]):
             result = self.db.execute(query)
             return (result.scalar() or 0) > 0
 
+    def execute_query(self, query, operation: str = "custom") -> Any:
+        """Execute a custom query with metrics."""
+        with self.metrics.record_query(self.table_name, operation):
+            result = self.db.execute(query)
+            if not self._in_transaction:
+                self.db.commit()
+            return result
 
-class AsyncBaseDBManager(ABC, Generic[ModelType]):
+    def execute_raw_sql(
+        self, sql: str, params: dict[str, Any] | None = None, operation: str = "raw_sql"
+    ) -> Any:
+        """Execute raw SQL with metrics."""
+        with self.metrics.record_query(self.table_name, operation):
+            result = self.db.execute(text(sql), params or {})
+            if not self._in_transaction:
+                self.db.commit()
+            return result
+
+    def bulk_create(self, instances: list[ModelType]) -> list[ModelType]:
+        """Bulk create records with metrics."""
+        with self.metrics.record_query(self.table_name, "bulk_insert"):
+            self.db.add_all(instances)
+            if not self._in_transaction:
+                self.db.commit()
+                for instance in instances:
+                    self.db.refresh(instance)
+            return instances
+
+    def bulk_update(self, updates: list[dict[str, Any]]) -> int:
+        """Bulk update records with metrics."""
+        with self.metrics.record_query(self.table_name, "bulk_update"):
+            # Each update dict should have 'id' and fields to update
+            count = 0
+            for update_data in updates:
+                id_value = update_data.pop("id", None)
+                if id_value and update_data:
+                    result = self.db.execute(
+                        self.model_class.__table__.update()
+                        .where(self.model_class.id == id_value)
+                        .values(**update_data)
+                    )
+                    count += result.rowcount
+
+            if not self._in_transaction:
+                self.db.commit()
+            return count
+
+
+class AsyncBaseDBManager[ModelType: SQLModel](ABC):
     """Base class for async database managers with metrics."""
 
     def __init__(self, db_session: AsyncSession):
@@ -333,3 +382,50 @@ class AsyncBaseDBManager(ABC, Generic[ModelType]):
             )
             result = await self.db.execute(query)
             return (result.scalar() or 0) > 0
+
+    async def execute_query(self, query, operation: str = "custom") -> Any:
+        """Execute a custom query with metrics."""
+        with self.metrics.record_query(self.table_name, operation):
+            result = await self.db.execute(query)
+            if not self._in_transaction:
+                await self.db.commit()
+            return result
+
+    async def execute_raw_sql(
+        self, sql: str, params: dict[str, Any] | None = None, operation: str = "raw_sql"
+    ) -> Any:
+        """Execute raw SQL with metrics."""
+        with self.metrics.record_query(self.table_name, operation):
+            result = await self.db.execute(text(sql), params or {})
+            if not self._in_transaction:
+                await self.db.commit()
+            return result
+
+    async def bulk_create(self, instances: list[ModelType]) -> list[ModelType]:
+        """Bulk create records with metrics."""
+        with self.metrics.record_query(self.table_name, "bulk_insert"):
+            self.db.add_all(instances)
+            if not self._in_transaction:
+                await self.db.commit()
+                for instance in instances:
+                    await self.db.refresh(instance)
+            return instances
+
+    async def bulk_update(self, updates: list[dict[str, Any]]) -> int:
+        """Bulk update records with metrics."""
+        with self.metrics.record_query(self.table_name, "bulk_update"):
+            # Each update dict should have 'id' and fields to update
+            count = 0
+            for update_data in updates:
+                id_value = update_data.pop("id", None)
+                if id_value and update_data:
+                    result = await self.db.execute(
+                        self.model_class.__table__.update()
+                        .where(self.model_class.id == id_value)
+                        .values(**update_data)
+                    )
+                    count += result.rowcount
+
+            if not self._in_transaction:
+                await self.db.commit()
+            return count

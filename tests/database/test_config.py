@@ -1,9 +1,5 @@
 """Tests for database configuration."""
 
-import os
-
-import pytest
-
 from myequal_ai_common.database import DatabaseConfig, get_database_config
 
 
@@ -13,7 +9,7 @@ class TestDatabaseConfig:
     def test_default_config(self):
         """Test default configuration values."""
         config = DatabaseConfig(url="postgresql://user:pass@localhost:5432/test")
-        
+
         assert config.pool_size == 5
         assert config.max_overflow == 10
         assert config.pool_timeout == 30.0
@@ -29,7 +25,7 @@ class TestDatabaseConfig:
         """Test sync to async URL conversion."""
         config = DatabaseConfig(url="postgresql://user:pass@localhost:5432/test")
         assert config.async_url == "postgresql+asyncpg://user:pass@localhost:5432/test"
-        
+
         # Test with postgres:// prefix
         config = DatabaseConfig(url="postgres://user:pass@localhost:5432/test")
         assert config.async_url == "postgresql+asyncpg://user:pass@localhost:5432/test"
@@ -38,7 +34,7 @@ class TestDatabaseConfig:
         """Test URL normalization for sync."""
         config = DatabaseConfig(url="postgres://user:pass@localhost:5432/test")
         assert config.sync_url == "postgresql://user:pass@localhost:5432/test"
-        
+
         # Already normalized
         config = DatabaseConfig(url="postgresql://user:pass@localhost:5432/test")
         assert config.sync_url == "postgresql://user:pass@localhost:5432/test"
@@ -46,31 +42,27 @@ class TestDatabaseConfig:
     def test_is_production(self):
         """Test production environment detection."""
         config = DatabaseConfig(
-            url="postgresql://user:pass@localhost:5432/test",
-            environment="production"
+            url="postgresql://user:pass@localhost:5432/test", environment="production"
         )
         assert config.is_production is True
-        
+
         config = DatabaseConfig(
-            url="postgresql://user:pass@localhost:5432/test",
-            environment="prod"
+            url="postgresql://user:pass@localhost:5432/test", environment="prod"
         )
         assert config.is_production is True
-        
+
         config = DatabaseConfig(
-            url="postgresql://user:pass@localhost:5432/test",
-            environment="development"
+            url="postgresql://user:pass@localhost:5432/test", environment="development"
         )
         assert config.is_production is False
 
     def test_engine_kwargs_production(self):
         """Test engine kwargs for production."""
         config = DatabaseConfig(
-            url="postgresql://user:pass@localhost:5432/test",
-            environment="production"
+            url="postgresql://user:pass@localhost:5432/test", environment="production"
         )
         kwargs = config.get_engine_kwargs(is_async=False)
-        
+
         assert kwargs["pool_size"] == 5
         assert kwargs["max_overflow"] == 10
         assert kwargs["pool_timeout"] == 30.0
@@ -81,11 +73,10 @@ class TestDatabaseConfig:
     def test_engine_kwargs_development(self):
         """Test engine kwargs for development."""
         config = DatabaseConfig(
-            url="postgresql://user:pass@localhost:5432/test",
-            environment="development"
+            url="postgresql://user:pass@localhost:5432/test", environment="development"
         )
         kwargs = config.get_engine_kwargs(is_async=False)
-        
+
         assert kwargs["poolclass"] == "NullPool"
         assert "pool_size" not in kwargs
         assert "max_overflow" not in kwargs
@@ -95,9 +86,9 @@ class TestDatabaseConfig:
         monkeypatch.setenv("DATABASE_URL", "postgresql://env:pass@host:5432/db")
         monkeypatch.setenv("DATABASE_POOL_SIZE", "20")
         monkeypatch.setenv("DATABASE_SERVICE_NAME", "test-service")
-        
+
         config = DatabaseConfig()
-        
+
         assert str(config.url) == "postgresql://env:pass@host:5432/db"
         assert config.pool_size == 20
         assert config.service_name == "test-service"
@@ -106,12 +97,13 @@ class TestDatabaseConfig:
         """Test global config is singleton."""
         # Set required DATABASE_URL
         monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
-        
+
         # Reset global instance
         from myequal_ai_common.database import config as config_module
+
         config_module._database_config = None
-        
+
         config1 = get_database_config()
         config2 = get_database_config()
-        
+
         assert config1 is config2

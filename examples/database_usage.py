@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
@@ -22,9 +21,9 @@ class Task(SQLModel, table=True):
 
     __tablename__ = "tasks"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     title: str = Field(index=True)
-    description: Optional[str] = None
+    description: str | None = None
     completed: bool = Field(default=False)
     priority: int = Field(default=0)
 
@@ -41,7 +40,7 @@ class TaskManager(BaseDBManager[Task]):
         """Get all incomplete tasks."""
         return self.list(filters={"completed": False}, order_by="-priority")
 
-    def complete_task(self, task_id: int) -> Optional[Task]:
+    def complete_task(self, task_id: int) -> Task | None:
         """Mark a task as completed."""
         return self.update(task_id, completed=True)
 
@@ -102,8 +101,8 @@ def sync_example():
 
         # Transaction example
         with manager.transaction():
-            task3 = manager.create(title="Task in transaction", priority=10)
-            task4 = manager.create(title="Another transaction task", priority=7)
+            manager.create(title="Task in transaction", priority=10)
+            manager.create(title="Another transaction task", priority=7)
             print("\nCreated 2 tasks in transaction")
 
         # Count tasks

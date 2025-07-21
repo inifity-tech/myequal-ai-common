@@ -10,6 +10,7 @@ from .engines import (
     get_async_engine,
     get_sync_engine,
 )
+from .examples import AsyncUserManager, User, UserManager
 from .exceptions import (
     ConnectionError,
     DatabaseError,
@@ -76,4 +77,8 @@ __all__ = [
     "async_db_retry",
     "check_database_health",
     "async_check_database_health",
+    # Examples
+    "User",
+    "UserManager",
+    "AsyncUserManager",
 ]
