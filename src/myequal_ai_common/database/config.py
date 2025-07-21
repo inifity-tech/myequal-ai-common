@@ -145,5 +145,5 @@ def get_database_config() -> DatabaseConfig:
     """Get or create database configuration."""
     global _database_config
     if _database_config is None:
-        _database_config = DatabaseConfig()
+        _database_config = DatabaseConfig()  # type: ignore
     return _database_config

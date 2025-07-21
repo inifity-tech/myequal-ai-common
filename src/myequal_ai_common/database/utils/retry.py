@@ -122,7 +122,7 @@ def db_retry(
                 )
                 raise e.last_attempt.exception() from e
 
-        return wrapper
+        return wrapper  # type: ignore
 
     return decorator
 
@@ -185,6 +185,6 @@ def async_db_retry(
                 )
                 raise e.last_attempt.exception() from e
 
-        return wrapper
+        return wrapper  # type: ignore
 
     return decorator

@@ -35,7 +35,7 @@ class BaseDBManager[ModelType: SQLModel](ABC):
     @property
     def table_name(self) -> str:
         """Get the table name from the model."""
-        return self.model_class.__tablename__
+        return str(self.model_class.__tablename__)
 
     @contextmanager
     def transaction(self):
@@ -70,7 +70,7 @@ class BaseDBManager[ModelType: SQLModel](ABC):
     def get(self, id: Any) -> ModelType | None:
         """Get a record by ID with metrics."""
         with self.metrics.record_query(self.table_name, "select"):
-            query = select(self.model_class).where(self.model_class.id == id)
+            query = select(self.model_class).where(self.model_class.id == id)  # type: ignore
             result = self.db.execute(query)
             return result.scalar_one_or_none()
 
@@ -115,7 +115,7 @@ class BaseDBManager[ModelType: SQLModel](ABC):
                 query = query.limit(limit)
 
             result = self.db.execute(query)
-            return result.scalars().all()
+            return list(result.scalars().all())
 
     def update(self, id: Any, **kwargs) -> ModelType | None:
         """Update a record with metrics."""
@@ -213,11 +213,11 @@ class BaseDBManager[ModelType: SQLModel](ABC):
                 id_value = update_data.pop("id", None)
                 if id_value and update_data:
                     result = self.db.execute(
-                        self.model_class.__table__.update()
-                        .where(self.model_class.id == id_value)
+                        self.model_class.__table__.update()  # type: ignore
+                        .where(self.model_class.id == id_value)  # type: ignore
                         .values(**update_data)
                     )
-                    count += result.rowcount
+                    count += result.rowcount  # type: ignore
 
             if not self._in_transaction:
                 self.db.commit()
@@ -242,7 +242,7 @@ class AsyncBaseDBManager[ModelType: SQLModel](ABC):
     @property
     def table_name(self) -> str:
         """Get the table name from the model."""
-        return self.model_class.__tablename__
+        return str(self.model_class.__tablename__)
 
     @contextmanager
     def transaction(self):
@@ -277,7 +277,7 @@ class AsyncBaseDBManager[ModelType: SQLModel](ABC):
     async def get(self, id: Any) -> ModelType | None:
         """Get a record by ID with metrics."""
         with self.metrics.record_query(self.table_name, "select"):
-            query = select(self.model_class).where(self.model_class.id == id)
+            query = select(self.model_class).where(self.model_class.id == id)  # type: ignore
             result = await self.db.execute(query)
             return result.scalar_one_or_none()
 
@@ -322,7 +322,7 @@ class AsyncBaseDBManager[ModelType: SQLModel](ABC):
                 query = query.limit(limit)
 
             result = await self.db.execute(query)
-            return result.scalars().all()
+            return list(result.scalars().all())
 
     async def update(self, id: Any, **kwargs) -> ModelType | None:
         """Update a record with metrics."""

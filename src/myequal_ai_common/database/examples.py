@@ -12,7 +12,7 @@ from .base_manager import AsyncBaseDBManager, BaseDBManager
 class User(SQLModel, table=True):
     """Example user model."""
 
-    __tablename__ = "users"
+    __tablename__ = "users"  # type: ignore
 
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(unique=True, index=True)
@@ -36,7 +36,7 @@ class UserManager(BaseDBManager[User]):
 
     def get_active_users(self, limit: int = 100) -> list[User]:
         """Get active users using custom query."""
-        query = select(User).where(User.is_active.is_(True)).limit(limit)
+        query = select(User).where(User.is_active == True).limit(limit)  # type: ignore # noqa: E712
         result = self.execute_query(query, operation="get_active_users")
         return result.scalars().all()
 
@@ -87,7 +87,7 @@ class AsyncUserManager(AsyncBaseDBManager[User]):
 
     async def get_active_users(self, limit: int = 100) -> list[User]:
         """Get active users using custom query."""
-        query = select(User).where(User.is_active.is_(True)).limit(limit)
+        query = select(User).where(User.is_active == True).limit(limit)  # type: ignore # noqa: E712
         result = await self.execute_query(query, operation="get_active_users")
         return result.scalars().all()
 

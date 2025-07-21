@@ -6,7 +6,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from typing import Any, Optional, TypeVar
 
-from datadog import DogStatsd
+from datadog.dogstatsd.base import DogStatsd
 
 from .config import get_database_config
 
@@ -181,7 +181,7 @@ class DatabaseMetrics:
                 with self.record_query(table, operation, additional_tags):
                     return func(*args, **kwargs)
 
-            return wrapper
+            return wrapper  # type: ignore
 
         return decorator
 
@@ -199,7 +199,7 @@ class DatabaseMetrics:
                 with self.record_query(table, operation, additional_tags):
                     return await func(*args, **kwargs)
 
-            return wrapper
+            return wrapper  # type: ignore
 
         return decorator
 

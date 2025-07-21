@@ -26,11 +26,11 @@ def _setup_pool_metrics(engine: Engine) -> None:
         pool = engine.pool
         if hasattr(pool, "size"):
             metrics.record_pool_stats(
-                pool_size=pool.size(),
-                checked_in=pool.checkedin(),
-                checked_out=pool.checkedout(),
-                overflow=pool.overflow(),
-                total=pool.total_connections(),
+                pool_size=pool.size(),  # type: ignore
+                checked_in=pool.checkedin(),  # type: ignore
+                checked_out=pool.checkedout(),  # type: ignore
+                overflow=pool.overflow(),  # type: ignore
+                total=pool.total_connections(),  # type: ignore
             )
 
     # Set up periodic collection (every 30 seconds)

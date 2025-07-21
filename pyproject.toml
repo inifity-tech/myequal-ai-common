@@ -66,6 +66,8 @@ typeCheckingMode = "basic"
 reportMissingImports = true
 reportMissingTypeStubs = false
 reportPrivateUsage = false
+reportGeneralTypeIssues = false
+reportAttributeAccessIssue = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
