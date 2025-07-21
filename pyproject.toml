@@ -8,7 +8,15 @@ version = "0.1.1"
 description = "Common utilities and shared code for MyEqual AI microservices"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "sqlmodel>=0.0.22",
+    "asyncpg>=0.30.0",
+    "psycopg2-binary>=2.9.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "tenacity>=9.0.0",
+    "datadog>=0.51.0",
+]
 
 [project.optional-dependencies]
 dev = [
