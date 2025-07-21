@@ -127,11 +127,10 @@ class DatabaseConfig(BaseSettings):
             # Use NullPool for development
             kwargs["poolclass"] = "NullPool"
 
-        # Add query timeout if specified
+        # Add query timeout if specified (PostgreSQL uses statement_timeout)
         if self.query_timeout and not is_async:
             kwargs["connect_args"] = {
-                "command_timeout": self.query_timeout,
-                "options": f"-c statement_timeout={self.query_timeout * 1000}",
+                "options": f"-c statement_timeout={self.query_timeout * 1000}ms",
             }
 
         return kwargs

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from typing import Any, Optional, TypeVar
 
-from datadog.dogstatsd.base import DogStatsd
+from datadog.dogstatsd.base import DogStatsd  # type: ignore
 
 from .config import get_database_config
 
@@ -23,15 +23,15 @@ class DatabaseMetrics:
     def __init__(self, statsd_client: DogStatsd | None = None):
         """Initialize database metrics."""
         self.config = get_database_config()
-        
+
         # Use provided client or create default one
         if statsd_client:
             self.statsd = statsd_client
         else:
             # Default configuration - services should provide their own client
             self.statsd = DogStatsd(
-                host=self.config.metrics_host or "localhost",
-                port=self.config.metrics_port or 8125,
+                host="localhost",
+                port=8125,
                 namespace="myequal.db",
                 constant_tags=[
                     f"service:{self.config.service_name}",

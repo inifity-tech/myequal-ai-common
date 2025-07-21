@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.7.0",
     "tenacity>=9.0.0",
     "datadog>=0.51.0",
+    "greenlet>=3.0.0",
 ]
 
 [project.optional-dependencies]

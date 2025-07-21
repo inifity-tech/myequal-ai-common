@@ -70,12 +70,15 @@ class TaskManager(BaseDBManager[Task]):
         """Mark a task as completed."""
         return self.update(task_id, completed=True)
 
-    def get_tasks_by_priority_range(self, min_priority: int, max_priority: int) -> list[Task]:
+    def get_tasks_by_priority_range(
+        self, min_priority: int, max_priority: int
+    ) -> list[Task]:
         """Get tasks within a priority range using custom query."""
-        query = select(Task).where(
-            Task.priority >= min_priority,
-            Task.priority <= max_priority
-        ).order_by(Task.priority.desc())
+        query = (
+            select(Task)
+            .where(Task.priority >= min_priority, Task.priority <= max_priority)
+            .order_by(Task.priority.desc())
+        )
         result = self.execute_query(query, operation="get_by_priority_range")
         return list(result.scalars().all())
 
@@ -100,7 +103,7 @@ class TaskManager(BaseDBManager[Task]):
             "total_tasks": row[0] or 0,
             "completed_tasks": row[1] or 0,
             "avg_priority": float(row[2] or 0),
-            "max_priority": row[3] or 0
+            "max_priority": row[3] or 0,
         }
 
 
@@ -114,7 +117,11 @@ class AsyncTaskManager(AsyncBaseDBManager[Task]):
 
     async def get_high_priority_tasks(self, min_priority: int = 5):
         """Get high priority tasks using custom query."""
-        query = select(Task).where(Task.priority >= min_priority).order_by(Task.priority.desc())
+        query = (
+            select(Task)
+            .where(Task.priority >= min_priority)
+            .order_by(Task.priority.desc())
+        )
         result = await self.execute_query(query, operation="get_high_priority")
         return list(result.scalars().all())
 
@@ -128,7 +135,7 @@ class AsyncTaskManager(AsyncBaseDBManager[Task]):
         result = await self.execute_raw_sql(
             sql,
             {"completed": completed, "task_ids": task_ids},
-            operation="bulk_update_completion"
+            operation="bulk_update_completion",
         )
         return result.rowcount
 
@@ -148,7 +155,7 @@ class AsyncTaskManager(AsyncBaseDBManager[Task]):
             "total_tasks": row[0] or 0,
             "completed_tasks": row[1] or 0,
             "avg_priority": float(row[2] or 0),
-            "max_priority": row[3] or 0
+            "max_priority": row[3] or 0,
         }
 
 
@@ -224,8 +231,7 @@ def sync_example():
             # Bulk create example with error handling
             try:
                 bulk_tasks_data = [
-                    {"title": f"Bulk task {i}", "priority": i * 2}
-                    for i in range(1, 4)
+                    {"title": f"Bulk task {i}", "priority": i * 2} for i in range(1, 4)
                 ]
                 bulk_tasks = manager.bulk_create_tasks(bulk_tasks_data)
                 print(f"\nCreated {len(bulk_tasks)} tasks in bulk")
@@ -245,7 +251,9 @@ def sync_example():
 
     except Exception as e:
         print(f"Database operation failed: {e}")
-        print("This could be due to connection issues, query errors, or constraint violations")
+        print(
+            "This could be due to connection issues, query errors, or constraint violations"
+        )
 
 
 async def async_example():
@@ -334,7 +342,7 @@ def main():
         print("You may need to create the tables first using Alembic migrations.")
     print("\nCommon database exception types:")
     print("- DatabaseError: Base database exception")
-    print("- ConnectionError: Database connection issues") 
+    print("- ConnectionError: Database connection issues")
     print("- RecordNotFoundError: Entity not found")
     print("- DuplicateRecordError: Unique constraint violations")
     print("- TransactionError: Transaction management issues")
