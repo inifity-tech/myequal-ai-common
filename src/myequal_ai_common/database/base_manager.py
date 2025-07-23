@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import Any, TypeVar
 
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import and_, delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlmodel import SQLModel
@@ -134,6 +134,38 @@ class BaseDBManager[ModelType: SQLModel](ABC):
 
             return instance
 
+    def update_by(self, filters: dict[str, Any], **kwargs) -> ModelType | None:
+        """Update a single record by filters with metrics."""
+        with self.metrics.record_query(self.table_name, "update"):
+            instance = self.get_by(**filters)
+            if not instance:
+                return None
+
+            for key, value in kwargs.items():
+                if hasattr(instance, key):
+                    setattr(instance, key, value)
+
+            if not self._in_transaction:
+                self.db.commit()
+                self.db.refresh(instance)
+
+            return instance
+
+    def update_all_by(self, filters: dict[str, Any], **kwargs) -> int:
+        """Update all records matching filters with metrics."""
+        with self.metrics.record_query(self.table_name, "update_all"):
+            stmt = (
+                update(self.model_class)
+                .where(*[getattr(self.model_class, k) == v for k, v in filters.items()])
+                .values(**kwargs)
+            )
+            result = self.db.execute(stmt)
+
+            if not self._in_transaction:
+                self.db.commit()
+
+            return result.rowcount  # type: ignore
+
     def delete(self, id: Any) -> bool:
         """Delete a record with metrics."""
         with self.metrics.record_query(self.table_name, "delete"):
@@ -147,6 +179,31 @@ class BaseDBManager[ModelType: SQLModel](ABC):
                 self.db.commit()
 
             return True
+
+    def delete_by(self, **filters) -> bool:
+        """Delete a single record by filters with metrics."""
+        with self.metrics.record_query(self.table_name, "delete"):
+            instance = self.get_by(**filters)
+            if not instance:
+                return False
+
+            self.db.delete(instance)
+
+            if not self._in_transaction:
+                self.db.commit()
+
+            return True
+
+    def delete_all_by(self, **filters) -> int:
+        """Delete all records matching filters with metrics."""
+        with self.metrics.record_query(self.table_name, "delete_all"):
+            stmt = delete(self.model_class).filter_by(**filters)
+            result = self.db.execute(stmt)
+
+            if not self._in_transaction:
+                self.db.commit()
+
+            return result.rowcount  # type: ignore
 
     def count(self, filters: dict[str, Any] | None = None) -> int:
         """Count records with optional filters with metrics."""
@@ -341,6 +398,38 @@ class AsyncBaseDBManager[ModelType: SQLModel](ABC):
 
             return instance
 
+    async def update_by(self, filters: dict[str, Any], **kwargs) -> ModelType | None:
+        """Update a single record by filters with metrics."""
+        with self.metrics.record_query(self.table_name, "update"):
+            instance = await self.get_by(**filters)
+            if not instance:
+                return None
+
+            for key, value in kwargs.items():
+                if hasattr(instance, key):
+                    setattr(instance, key, value)
+
+            if not self._in_transaction:
+                await self.db.commit()
+                await self.db.refresh(instance)
+
+            return instance
+
+    async def update_all_by(self, filters: dict[str, Any], **kwargs) -> int:
+        """Update all records matching filters with metrics."""
+        with self.metrics.record_query(self.table_name, "update_all"):
+            stmt = (
+                update(self.model_class)
+                .where(*[getattr(self.model_class, k) == v for k, v in filters.items()])
+                .values(**kwargs)
+            )
+            result = await self.db.execute(stmt)
+
+            if not self._in_transaction:
+                await self.db.commit()
+
+            return result.rowcount  # type: ignore
+
     async def delete(self, id: Any) -> bool:
         """Delete a record with metrics."""
         with self.metrics.record_query(self.table_name, "delete"):
@@ -354,6 +443,31 @@ class AsyncBaseDBManager[ModelType: SQLModel](ABC):
                 await self.db.commit()
 
             return True
+
+    async def delete_by(self, **filters) -> bool:
+        """Delete a single record by filters with metrics."""
+        with self.metrics.record_query(self.table_name, "delete"):
+            instance = await self.get_by(**filters)
+            if not instance:
+                return False
+
+            await self.db.delete(instance)
+
+            if not self._in_transaction:
+                await self.db.commit()
+
+            return True
+
+    async def delete_all_by(self, **filters) -> int:
+        """Delete all records matching filters with metrics."""
+        with self.metrics.record_query(self.table_name, "delete_all"):
+            stmt = delete(self.model_class).filter_by(**filters)
+            result = await self.db.execute(stmt)
+
+            if not self._in_transaction:
+                await self.db.commit()
+
+            return result.rowcount  # type: ignore
 
     async def count(self, filters: dict[str, Any] | None = None) -> int:
         """Count records with optional filters with metrics."""

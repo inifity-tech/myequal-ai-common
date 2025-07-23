@@ -238,6 +238,42 @@ def sync_example():
             except Exception as e:
                 print(f"Bulk create failed: {e}")
 
+            # NEW: Update by field example - update task by title
+            try:
+                updated_task = manager.update_by(
+                    {"title": "Write documentation"},
+                    description="Updated: Create comprehensive documentation with examples",
+                    priority=10
+                )
+                if updated_task:
+                    print(f"\nUpdated task by title: {updated_task.title} (priority: {updated_task.priority})")
+            except Exception as e:
+                print(f"Update by title failed: {e}")
+
+            # NEW: Update all by field example - mark all high priority tasks as completed
+            try:
+                updated_count = manager.update_all_by(
+                    {"priority": 9},
+                    completed=True
+                )
+                print(f"Marked {updated_count} high priority tasks as completed")
+            except Exception as e:
+                print(f"Update all by priority failed: {e}")
+
+            # NEW: Delete by field example - delete a specific task by title
+            try:
+                deleted = manager.delete_by(title="Bulk task 1")
+                print(f"Deleted task by title: {deleted}")
+            except Exception as e:
+                print(f"Delete by title failed: {e}")
+
+            # NEW: Delete all by field example - delete all completed low priority tasks
+            try:
+                deleted_count = manager.delete_all_by(completed=True, priority=2)
+                print(f"Deleted {deleted_count} completed low priority tasks")
+            except Exception as e:
+                print(f"Delete all by filters failed: {e}")
+
             # Get statistics using raw SQL with error handling
             try:
                 stats = manager.get_task_stats()
@@ -304,6 +340,30 @@ async def async_example():
         task_ids = [t.id for t in tasks[:3]]
         updated_count = await manager.bulk_update_completion(task_ids, completed=True)
         print(f"\nBulk updated {updated_count} tasks to completed")
+
+        # NEW: Async update by field example - update task by title
+        updated_task = await manager.update_by(
+            {"title": "Async task 1"},
+            description="Updated async description",
+            priority=8
+        )
+        if updated_task:
+            print(f"\nAsync: Updated task by title: {updated_task.title}")
+
+        # NEW: Async update all by field example
+        updated_count = await manager.update_all_by(
+            {"completed": False, "priority": 0},
+            priority=1
+        )
+        print(f"Async: Updated {updated_count} tasks to priority 1")
+
+        # NEW: Async delete by field example
+        deleted = await manager.delete_by(title="Bulk task 4")
+        print(f"Async: Deleted task by title: {deleted}")
+
+        # NEW: Async delete all by field example
+        deleted_count = await manager.delete_all_by(priority=0)
+        print(f"Async: Deleted {deleted_count} tasks with priority 0")
 
         # Get statistics using raw SQL
         stats = await manager.get_task_stats()
