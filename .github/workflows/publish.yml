@@ -29,15 +29,10 @@ jobs:
       with:
         python-version: "3.12"
     
-    - name: Verify tag matches version
+    - name: Extract version from tag
       run: |
         TAG_VERSION=${GITHUB_REF_NAME#v}
-        PACKAGE_VERSION=$(uv run python -c "import toml; print(toml.load('pyproject.toml')['project']['version'])")
-        if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
-          echo "Error: Tag version ($TAG_VERSION) doesn't match package version ($PACKAGE_VERSION)"
-          exit 1
-        fi
-        echo "Version check passed: $TAG_VERSION"
+        echo "Publishing version: $TAG_VERSION"
     
     - name: Install build dependencies
       run: |

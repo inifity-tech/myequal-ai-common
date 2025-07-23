@@ -177,15 +177,16 @@ When implementing features, always check if they should be:
 
 ### Publishing to GitHub Packages
 
-The common library is published to GitHub Packages. To publish a new version:
+The common library is published to GitHub Packages via manual workflow trigger. To publish a new version:
 
-```bash
-# Tag the release
-git tag v0.1.0
-git push origin v0.1.0
-
-# The GitHub Action will automatically publish to GitHub Packages
-```
+1. Go to the GitHub Actions tab in the repository
+2. Select the "Manual Release" workflow
+3. Click "Run workflow" and enter the new version (e.g., 1.0.0)
+4. The workflow will automatically:
+   - Update version in pyproject.toml and __init__.py
+   - Create a git tag
+   - Push changes to master
+   - Trigger the publish workflow to create a GitHub release
 
 ### Consuming in Services
 
