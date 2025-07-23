@@ -243,19 +243,18 @@ def sync_example():
                 updated_task = manager.update_by(
                     {"title": "Write documentation"},
                     description="Updated: Create comprehensive documentation with examples",
-                    priority=10
+                    priority=10,
                 )
                 if updated_task:
-                    print(f"\nUpdated task by title: {updated_task.title} (priority: {updated_task.priority})")
+                    print(
+                        f"\nUpdated task by title: {updated_task.title} (priority: {updated_task.priority})"
+                    )
             except Exception as e:
                 print(f"Update by title failed: {e}")
 
             # NEW: Update all by field example - mark all high priority tasks as completed
             try:
-                updated_count = manager.update_all_by(
-                    {"priority": 9},
-                    completed=True
-                )
+                updated_count = manager.update_all_by({"priority": 9}, completed=True)
                 print(f"Marked {updated_count} high priority tasks as completed")
             except Exception as e:
                 print(f"Update all by priority failed: {e}")
@@ -345,15 +344,14 @@ async def async_example():
         updated_task = await manager.update_by(
             {"title": "Async task 1"},
             description="Updated async description",
-            priority=8
+            priority=8,
         )
         if updated_task:
             print(f"\nAsync: Updated task by title: {updated_task.title}")
 
         # NEW: Async update all by field example
         updated_count = await manager.update_all_by(
-            {"completed": False, "priority": 0},
-            priority=1
+            {"completed": False, "priority": 0}, priority=1
         )
         print(f"Async: Updated {updated_count} tasks to priority 1")
 

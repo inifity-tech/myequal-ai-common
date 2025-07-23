@@ -6,6 +6,7 @@ to work with records using fields other than the primary key ID.
 
 import asyncio
 from datetime import datetime
+
 from sqlmodel import Field, SQLModel
 
 from myequal_ai_common.database import AsyncBaseDBManager, get_async_db
@@ -37,12 +38,12 @@ class CallSessionManager(AsyncBaseDBManager[CallSession]):
     async def start_session(self, session_id: str) -> CallSession | None:
         """Start a call session by updating its status and start time."""
         return await self.update_by(
-            {"session_id": session_id},
-            status="active",
-            start_time=datetime.now()
+            {"session_id": session_id}, status="active", start_time=datetime.now()
         )
 
-    async def complete_session(self, session_id: str, summary: str) -> CallSession | None:
+    async def complete_session(
+        self, session_id: str, summary: str
+    ) -> CallSession | None:
         """Complete a call session with summary and duration calculation."""
         # First get the session to calculate duration
         session = await self.get_by(session_id=session_id)
@@ -57,7 +58,7 @@ class CallSessionManager(AsyncBaseDBManager[CallSession]):
             status="completed",
             end_time=end_time,
             duration_seconds=duration,
-            summary=summary
+            summary=summary,
         )
 
     async def fail_session(self, session_id: str, reason: str) -> CallSession | None:
@@ -66,14 +67,13 @@ class CallSessionManager(AsyncBaseDBManager[CallSession]):
             {"session_id": session_id},
             status="failed",
             end_time=datetime.now(),
-            summary=f"Failed: {reason}"
+            summary=f"Failed: {reason}",
         )
 
     async def cleanup_abandoned_sessions(self, user_id: int) -> int:
         """Clean up all abandoned sessions for a user."""
         return await self.update_all_by(
-            {"user_id": user_id, "status": "pending"},
-            status="abandoned"
+            {"user_id": user_id, "status": "pending"}, status="abandoned"
         )
 
     async def delete_session(self, session_id: str) -> bool:
@@ -98,7 +98,7 @@ async def session_example():
             session = await manager.create(
                 session_id=f"ses_{i}_{datetime.now().timestamp()}",
                 user_id=100,
-                status="pending"
+                status="pending",
             )
             sessions.append(session)
             print(f"Created session: {session.session_id}")
@@ -114,7 +114,7 @@ async def session_example():
         # Complete the session
         completed = await manager.complete_session(
             sessions[0].session_id,
-            "Call completed successfully. Discussed product features."
+            "Call completed successfully. Discussed product features.",
         )
         if completed:
             print(f"Completed session: {completed.session_id}")
@@ -123,8 +123,7 @@ async def session_example():
 
         # Fail another session
         failed = await manager.fail_session(
-            sessions[1].session_id,
-            "Network connection lost"
+            sessions[1].session_id, "Network connection lost"
         )
         if failed:
             print(f"\nFailed session: {failed.session_id}")
